@@ -25,37 +25,70 @@
         const messagesDiv = document.getElementById('messages');
         const typingNotification = document.getElementById('typing-notification');
 
-        // Get the username from the logged-in user (you should set this during login)
-        const username = 'YourUsername'; // Replace with actual username from the login
+        let currentUser = { username: '', isAdmin: false }; // Store user info here
+
+        // Fetch the logged-in username and isAdmin status
+        async function getUsernameAndAdminStatus() { // Renamed for clarity
+            try {
+                const response = await fetch('/get-username');
+                if (!response.ok) throw new Error('User not logged in or session expired');
+                const data = await response.json();
+                currentUser.username = data.username;
+                currentUser.isAdmin = data.isAdmin;
+                console.log(`Logged in as: ${currentUser.username}, Is Admin: ${currentUser.isAdmin}`);
+                // You might want to display the username somewhere on the page
+                // For example: document.querySelector('h1').textContent = `Welcome, ${currentUser.username}!`;
+            } catch (error) {
+                console.error('Error fetching username/admin status:', error);
+                alert('Session expired or not logged in. Please log in again.');
+                window.location.href = '/'; // Redirect to the login page
+            }
+        }
 
         // Send chat message
         sendButton.addEventListener('click', () => {
-            const message = chatInput.value;
+            const message = chatInput.value.trim();
             if (message) {
-                socket.emit('chatMessage', { username, message });
+                // We don't need to getUsername() every time, just use stored currentUser
+                socket.emit('chatMessage', { message: message }); // Server will add username/isAdmin
                 chatInput.value = ''; // Clear input after sending
             }
         });
 
         // Emit typing notification
         chatInput.addEventListener('input', () => {
-            socket.emit('typing', username);
+            // No need to send username or isAdmin, server knows from session
+            socket.emit('typing');
         });
 
         // Listen for chat messages
         socket.on('chatMessage', (msg) => {
             const messageElement = document.createElement('div');
-            messageElement.textContent = `${msg.username}: ${msg.message}`;
+            let displayName = msg.username;
+            if (msg.isAdmin) {
+                displayName += ' [STAFF]'; // Append [STAFF] if admin
+            }
+            messageElement.textContent = `${displayName}: ${msg.message}`;
             messagesDiv.appendChild(messageElement);
+            // Scroll to the bottom of the chat
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         });
 
         // Listen for typing notifications
-        socket.on('typing', (username) => {
-            typingNotification.textContent = `${username} is typing...`;
-            setTimeout(() => {
+        socket.on('typing', (data) => { // data now contains username and isAdmin
+            let typingDisplayName = data.username;
+            if (data.isAdmin) {
+                typingDisplayName += ' [STAFF]'; // Append [STAFF] if admin
+            }
+            typingNotification.textContent = `${typingDisplayName} is typing...`;
+            clearTimeout(typingNotification.timer); // Clear previous timer
+            typingNotification.timer = setTimeout(() => {
                 typingNotification.textContent = ''; // Clear typing notification after 1 second
             }, 1000);
         });
+
+        // Initialize user info on page load
+        window.onload = getUsernameAndAdminStatus;
     </script>
 </body>
 </html>
