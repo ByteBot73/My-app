@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="form-box">
+            <h2>Login</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit">Login</button>
+                <div id="error-message" class="error-message"></div>
+            </form>
+
+            <!-- Verification Code Box (Initially hidden) -->
+            <div id="verification-box" class="form-box" style="display: none;">
+                <h2>Admin Verification</h2>
+                <form id="verification-form">
+                    <div class="form-group">
+                        <label for="verificationCode">Enter Verification Code</label>
+                        <input type="text" id="verificationCode" name="verificationCode" required>
+                    </div>
+                    <button type="submit">Verify</button>
+                </form>
+                <div id="verification-error-message" class="error-message"></div>
+            </div>
+
+            <p>Don't have an account? <a href="register.html">Register</a></p> <!-- Registration link -->
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('login-form');
+        const verificationBox = document.getElementById('verification-box');
+        const verificationForm = document.getElementById('verification-form');
+        const errorMessageDiv = document.getElementById('error-message');
+        const verificationErrorMessageDiv = document.getElementById('verification-error-message');
+
+        let isAdmin = false;
+        let adminUsername = '';
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const username = form.username.value;
+            const password = form.password.value;
+
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                if (data.isAdmin) {
+                    // Admin login, show verification code box
+                    isAdmin = true;
+                    adminUsername = username;
+                    form.style.display = 'none'; // Hide the login form
+                    verificationBox.style.display = 'block'; // Show the verification box
+                } else {
+                    // Regular user login
+                    window.location.href = '/LoggedIn.html';  // Redirect to the logged-in page
+                }
+            } else {
+                // Show login error message
+                errorMessageDiv.textContent = data.error || 'Something went wrong!';
+                errorMessageDiv.style.display = 'block';
+            }
+        });
+
+        verificationForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const verificationCode = verificationForm.verificationCode.value;
+
+            const response = await fetch('/verify-admin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username: adminUsername, verificationCode }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Successfully verified, redirect to the admin dashboard
+                window.location.href = data.redirectTo || '/admin_dashboard.html'; // Redirect to the admin dashboard page
+            } else {
+                // Show verification error message
+                verificationErrorMessageDiv.textContent = data.error || 'Invalid verification code';
+                verificationErrorMessageDiv.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

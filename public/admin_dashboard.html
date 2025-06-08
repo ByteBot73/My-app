@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="admin">
+  <div class="admin-container">
+    <h2>Admin Dashboard</h2>
+    <div class="action-buttons">
+      <button id="logout-btn">Logout</button>
+      <button id="add-user-btn">Add New User</button>
+    </div>
+
+    <div id="user-list">
+      <h3>Registered Users</h3>
+      <table id="users-table">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Is Admin</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="users-list"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal for View User -->
+  <div id="view-user-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <h3>User Info</h3>
+      <p id="user-info"></p>
+      <button id="close-modal-btn" class="close-btn">Close</button>
+    </div>
+  </div>
+
+  <!-- Modal for Create User -->
+  <div id="create-user-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <h3>Create New User</h3>
+      <input type="text" id="new-username" placeholder="Username" />
+      <input type="password" id="new-password" placeholder="Password" />
+      <label>
+        <input type="checkbox" id="isAdmin" /> Is Admin
+      </label>
+      <div id="adminVerificationDiv" style="display: none;">
+        <input type="text" id="verificationCode" placeholder="Admin Verification Code" />
+      </div>
+      <button id="create-user-btn">Create</button>
+      <button id="close-create-modal-btn" class="close-btn">Close</button>
+    </div>
+  </div>
+
+  <script>
+    const usersListDiv = document.getElementById('users-list');
+    const createUserModal = document.getElementById('create-user-modal');
+    const viewUserModal = document.getElementById('view-user-modal');
+
+    const newUsernameInput = document.getElementById('new-username');
+    const newPasswordInput = document.getElementById('new-password');
+    const isAdminCheckbox = document.getElementById('isAdmin');
+    const verificationCodeInput = document.getElementById('verificationCode');
+    const adminVerificationDiv = document.getElementById('adminVerificationDiv');
+
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      window.location.href = '/';
+    });
+
+    document.getElementById('add-user-btn').addEventListener('click', () => {
+      createUserModal.style.display = 'flex';
+    });
+
+    document.getElementById('close-create-modal-btn').addEventListener('click', () => {
+      createUserModal.style.display = 'none';
+    });
+
+    document.getElementById('close-modal-btn').addEventListener('click', () => {
+      viewUserModal.style.display = 'none';
+    });
+
+    isAdminCheckbox.addEventListener('change', () => {
+      adminVerificationDiv.style.display = isAdminCheckbox.checked ? 'block' : 'none';
+    });
+
+    async function fetchUsers() {
+      const res = await fetch('/admin/users');
+      const users = await res.json();
+
+      usersListDiv.innerHTML = '';
+      users.forEach(user => {
+        usersListDiv.innerHTML += `
+          <tr>
+            <td>${user.username}</td>
+            <td>${user.isAdmin ? '✅' : '❌'}</td>
+            <td>
+              <button onclick="viewUser('${user.username}')">View</button>
+              <button onclick="deleteUser('${user._id}')">Delete</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    async function viewUser(username) {
+      const res = await fetch(`/admin/users/${username}`);
+      const user = await res.json();
+
+      if (user.username) {
+        document.getElementById('user-info').innerText = `
+Username: ${user.username}
+Is Admin: ${user.isAdmin ? 'Yes' : 'No'}
+Verification Code: ${user.verificationCode || 'N/A'}
+        `.trim();
+        viewUserModal.style.display = 'flex';
+      }
+    }
+
+    async function deleteUser(userId) {
+      if (!confirm('Are you sure you want to delete this user?')) return;
+
+      const res = await fetch(`/admin/users/${userId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        alert('User deleted!');
+        fetchUsers();
+      } else {
+        alert('Error deleting user');
+      }
+    }
+
+    document.getElementById('create-user-btn').addEventListener('click', async () => {
+      const username = newUsernameInput.value.trim();
+      const password = newPasswordInput.value.trim();
+      const isAdmin = isAdminCheckbox.checked;
+      const verificationCode = verificationCodeInput.value.trim();
+
+      if (!username || !password) {
+        return alert('Please enter a username and password');
+      }
+
+      if (isAdmin && !verificationCode) {
+        return alert('Please provide a verification code for admin accounts');
+      }
+
+      const res = await fetch('/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username,
+          password,
+          isAdmin,
+          verificationCode: isAdmin ? verificationCode : null
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || 'User created');
+        createUserModal.style.display = 'none';
+        fetchUsers();
+      } else {
+        alert(data.error || 'Error creating user');
+      }
+    });
+
+    // Initial load
+    window.onload = fetchUsers;
+  </script>
+</body>
+</html>
