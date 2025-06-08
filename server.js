@@ -115,33 +115,35 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const session = require('express-session');
-const User = require('./models/User');
+const User = require('./models/User'); // Assuming your User model is in ./models/User
 const socketIo = require('socket.io');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // --- Session Setup ---
-const sessionMiddleware = session({ // Store session middleware in a variable
+const sessionMiddleware = session({
     secret: '3c97b63d24b46cc1e91ee17f0d6e167354270e2629e1f3b33967562705f3ac07947a5e390036de0dcf08103fc80e4d4f0f69850e0798bc1880b9a8b6945b09c2',
     resave: false,
     saveUninitialized: true,
     cookie: {
         maxAge: 1000 * 60 * 60 * 24, // 1 day
-        secure: process.env.NODE_ENV === 'production'
+        secure: process.env.NODE_ENV === 'production', // Set to true in production
+        httpOnly: true,
+        sameSite: 'lax'
     }
 });
-app.use(sessionMiddleware); // Use the session middleware for HTTP requests
+app.use(sessionMiddleware);
 // --- End Session Setup ---
 
 // CORS Middleware
 app.use(cors({
-    origin: 'http://localhost:3000',
-    credentials: true
+    origin: 'https://my-app-u73k.onrender.com', // <<< YOUR FRONTEND URL
+    credentials: true // Allow cookies to be sent across origins
 }));
 
 app.use(bodyParser.json());
-app.use(express.static('public'));
+app.use(express.static('public')); // Serves static files like index.html, CSS, client-side JS
 
 // MongoDB connection
 mongoose.connect('mongodb+srv://georgeortman19:MsgpbIeGYduvbysk@myweb1.iovqynj.mongodb.net/myweb1?retryWrites=true&w=majority')
@@ -185,6 +187,7 @@ app.post('/login', async (req, res) => {
 app.post('/logout', (req, res) => {
     req.session.destroy(err => {
         if (err) {
+            console.error('Session destruction error:', err);
             return res.status(500).json({ error: 'Could not log out' });
         }
         res.clearCookie('connect.sid');
@@ -237,11 +240,10 @@ app.post('/register', async (req, res) => {
     }
 });
 
-// MODIFIED ROUTE: Get Logged-in Username (now returns isAdmin)
+// Get Logged-in Username (now returns isAdmin)
 app.get('/get-username', isAuthenticated, (req, res) => {
     res.json({ username: req.session.username, isAdmin: req.session.isAdmin });
 });
-
 
 // ADMIN DASHBOARD ROUTES
 app.get('/admin/users', isAuthenticated, isAdmin, async (req, res) => {
@@ -305,26 +307,28 @@ app.delete('/admin/users/:userId', isAuthenticated, isAdmin, async (req, res) =>
 });
 
 // Start the server
-const server = app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
+const server = app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
-// --- Socket.IO Setup (MODIFIED) ---
-const io = socketIo(server);
+// --- Socket.IO Setup ---
+const io = socketIo(server, {
+    cors: {
+        origin: 'https://my-app-u73k.onrender.com', // <<< YOUR FRONTEND URL for Socket.IO CORS
+        credentials: true
+    }
+});
 
 // Use shared session middleware for Socket.IO
-// This allows you to access session data (like req.session.username, req.session.isAdmin)
-// directly within your socket.io connection.
 io.use((socket, next) => {
-    sessionMiddleware(socket.request, {}, next);
+    sessionMiddleware(socket.request, {}, next); // Pass empty object for res parameter
 });
 
 io.on('connection', (socket) => {
-    // Check if the user is authenticated via session when the socket connects
     const username = socket.request.session.username;
     const isAdmin = socket.request.session.isAdmin;
 
     if (!username) {
         console.log('Unauthenticated socket connection attempted. Disconnecting.');
-        socket.disconnect(true); // Disconnect unauthenticated sockets
+        socket.disconnect(true);
         return;
     }
 
@@ -335,21 +339,18 @@ io.on('connection', (socket) => {
     });
 
     socket.on('chatMessage', (msg) => {
-        // The server validates isAdmin from the session, not trusting the client-sent flag
         const messageToSend = {
             username: username,
-            message: msg.message, // msg.message comes from client
-            isAdmin: isAdmin // Use isAdmin from the server-side session
+            message: msg.message,
+            isAdmin: isAdmin
         };
         console.log('Message:', messageToSend);
-        io.emit('chatMessage', messageToSend); // Broadcast message to all connected clients
+        io.emit('chatMessage', messageToSend);
     });
 
-    socket.on('typing', () => { // No need for client to send username/isAdmin for typing
-        // Server sends typing notification based on its own session info
+    socket.on('typing', () => {
         const typingUsername = username;
         const isTypingAdmin = isAdmin;
-        
         socket.broadcast.emit('typing', { username: typingUsername, isAdmin: isTypingAdmin });
     });
 });

@@ -19,75 +19,69 @@
     </div>
 
     <script>
-        const socket = io();
+        const frontendBaseUrl = 'https://my-app-u73k.onrender.com'; // Your Render frontend URL
+        const backendBaseUrl = 'https://YOUR_BACKEND_URL.onrender.com'; // <<< IMPORTANT: REPLACE THIS PLACEHOLDER
+
+        // Initialize socket.io with your backend URL
+        const socket = io(backendBaseUrl);
+
         const chatInput = document.getElementById('chat-input');
         const sendButton = document.getElementById('send-button');
         const messagesDiv = document.getElementById('messages');
         const typingNotification = document.getElementById('typing-notification');
 
-        let currentUser = { username: '', isAdmin: false }; // Store user info here
+        let currentUser = { username: '', isAdmin: false };
 
-        // Fetch the logged-in username and isAdmin status
-        async function getUsernameAndAdminStatus() { // Renamed for clarity
+        async function getUsernameAndAdminStatus() {
             try {
-                const response = await fetch('/get-username');
+                const response = await fetch(`${backendBaseUrl}/get-username`);
                 if (!response.ok) throw new Error('User not logged in or session expired');
                 const data = await response.json();
                 currentUser.username = data.username;
                 currentUser.isAdmin = data.isAdmin;
                 console.log(`Logged in as: ${currentUser.username}, Is Admin: ${currentUser.isAdmin}`);
-                // You might want to display the username somewhere on the page
-                // For example: document.querySelector('h1').textContent = `Welcome, ${currentUser.username}!`;
             } catch (error) {
                 console.error('Error fetching username/admin status:', error);
                 alert('Session expired or not logged in. Please log in again.');
-                window.location.href = '/'; // Redirect to the login page
+                window.location.href = `${frontendBaseUrl}/`; // Redirect to the main login page
             }
         }
 
-        // Send chat message
         sendButton.addEventListener('click', () => {
             const message = chatInput.value.trim();
             if (message) {
-                // We don't need to getUsername() every time, just use stored currentUser
-                socket.emit('chatMessage', { message: message }); // Server will add username/isAdmin
-                chatInput.value = ''; // Clear input after sending
+                socket.emit('chatMessage', { message: message });
+                chatInput.value = '';
             }
         });
 
-        // Emit typing notification
         chatInput.addEventListener('input', () => {
-            // No need to send username or isAdmin, server knows from session
             socket.emit('typing');
         });
 
-        // Listen for chat messages
         socket.on('chatMessage', (msg) => {
             const messageElement = document.createElement('div');
             let displayName = msg.username;
             if (msg.isAdmin) {
-                displayName += ' [STAFF]'; // Append [STAFF] if admin
+                displayName += ' [STAFF]';
             }
             messageElement.textContent = `${displayName}: ${msg.message}`;
             messagesDiv.appendChild(messageElement);
-            // Scroll to the bottom of the chat
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         });
 
-        // Listen for typing notifications
-        socket.on('typing', (data) => { // data now contains username and isAdmin
+        socket.on('typing', (data) => {
             let typingDisplayName = data.username;
             if (data.isAdmin) {
-                typingDisplayName += ' [STAFF]'; // Append [STAFF] if admin
+                typingDisplayName += ' [STAFF]';
             }
             typingNotification.textContent = `${typingDisplayName} is typing...`;
-            clearTimeout(typingNotification.timer); // Clear previous timer
+            clearTimeout(typingNotification.timer);
             typingNotification.timer = setTimeout(() => {
-                typingNotification.textContent = ''; // Clear typing notification after 1 second
+                typingNotification.textContent = '';
             }, 1000);
         });
 
-        // Initialize user info on page load
         window.onload = getUsernameAndAdminStatus;
     </script>
 </body>

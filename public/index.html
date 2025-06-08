@@ -3,109 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
+    <title>Login/Register</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <div class="form-box">
-            <h2>Login</h2>
-            <form id="login-form">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" required>
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required>
-                </div>
-                <button type="submit">Login</button>
-                <div id="error-message" class="error-message"></div>
-            </form>
+        <h2>Login / Register</h2>
+        <form id="login-form">
+            <input type="text" id="username" placeholder="Username" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit">Login</button>
+        </form>
+        <button id="show-register-btn">Register</button>
 
-            <!-- Verification Code Box (Initially hidden) -->
-            <div id="verification-box" class="form-box" style="display: none;">
-                <h2>Admin Verification</h2>
-                <form id="verification-form">
-                    <div class="form-group">
-                        <label for="verificationCode">Enter Verification Code</label>
-                        <input type="text" id="verificationCode" name="verificationCode" required>
-                    </div>
-                    <button type="submit">Verify</button>
-                </form>
-                <div id="verification-error-message" class="error-message"></div>
+        <div id="register-section" style="display: none;">
+            <h3>Register New Account</h3>
+            <input type="text" id="reg-username" placeholder="Username" required>
+            <input type="password" id="reg-password" placeholder="Password" required>
+            <label>
+                <input type="checkbox" id="reg-isAdmin"> Is Admin
+            </label>
+            <div id="reg-adminVerificationDiv" style="display: none;">
+                <input type="text" id="reg-verification-code-input" placeholder="Verification Code">
             </div>
-
-            <p>Don't have an account? <a href="register.html">Register</a></p> <!-- Registration link -->
+            <button id="register-btn">Register</button>
+            <button id="hide-register-btn">Cancel</button>
         </div>
     </div>
 
     <script>
-        const form = document.getElementById('login-form');
-        const verificationBox = document.getElementById('verification-box');
-        const verificationForm = document.getElementById('verification-form');
-        const errorMessageDiv = document.getElementById('error-message');
-        const verificationErrorMessageDiv = document.getElementById('verification-error-message');
+        // Frontend URL for cross-origin consistency (this is your Render frontend URL)
+        const frontendBaseUrl = 'https://my-app-u73k.onrender.com';
+        // You'll need to set your backend URL here after you deploy your server.js to Render
+        const backendBaseUrl = 'https://YOUR_BACKEND_URL.onrender.com'; // <<< IMPORTANT: REPLACE THIS PLACEHOLDER
 
-        let isAdmin = false;
-        let adminUsername = '';
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
 
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
+            try {
+                const response = await fetch(`${backendBaseUrl}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
 
-            const username = form.username.value;
-            const password = form.password.value;
-
-            const response = await fetch('http://localhost:3000/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ username, password }),
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                if (data.isAdmin) {
-                    // Admin login, show verification code box
-                    isAdmin = true;
-                    adminUsername = username;
-                    form.style.display = 'none'; // Hide the login form
-                    verificationBox.style.display = 'block'; // Show the verification box
+                const data = await response.json();
+                if (response.ok) {
+                    alert(data.message);
+                    if (data.isAdmin) {
+                        window.location.href = `${frontendBaseUrl}/admin_dashboard.html`;
+                    } else {
+                        window.location.href = `${frontendBaseUrl}/logged_in.html`;
+                    }
                 } else {
-                    // Regular user login
-                    window.location.href = '/LoggedIn.html';  // Redirect to the logged-in page
+                    alert(data.error || 'Login failed');
                 }
-            } else {
-                // Show login error message
-                errorMessageDiv.textContent = data.error || 'Something went wrong!';
-                errorMessageDiv.style.display = 'block';
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('An error occurred during login. Please ensure your backend server is running and accessible.');
             }
         });
 
-        verificationForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
+        const showRegisterBtn = document.getElementById('show-register-btn');
+        const hideRegisterBtn = document.getElementById('hide-register-btn');
+        const registerSection = document.getElementById('register-section');
+        const regIsAdminCheckbox = document.getElementById('reg-isAdmin');
+        const regAdminVerificationDiv = document.getElementById('reg-adminVerificationDiv');
+        const regVerificationCodeInput = document.getElementById('reg-verification-code-input');
+        const registerBtn = document.getElementById('register-btn');
+        const regUsernameInput = document.getElementById('reg-username');
+        const regPasswordInput = document.getElementById('reg-password');
 
-            const verificationCode = verificationForm.verificationCode.value;
+        showRegisterBtn.addEventListener('click', () => {
+            registerSection.style.display = 'block';
+            showRegisterBtn.style.display = 'none';
+            regUsernameInput.value = '';
+            regPasswordInput.value = '';
+            regIsAdminCheckbox.checked = false;
+            regAdminVerificationDiv.style.display = 'none';
+            regVerificationCodeInput.value = '';
+        });
 
-            const response = await fetch('http://localhost:3000/verify-admin', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ username: adminUsername, verificationCode }),
-            });
+        hideRegisterBtn.addEventListener('click', () => {
+            registerSection.style.display = 'none';
+            showRegisterBtn.style.display = 'block';
+        });
 
-            const data = await response.json();
-
-            if (response.ok) {
-                // Successfully verified, redirect to the admin dashboard
-                window.location.href = data.redirectTo || '/admin_dashboard.html'; // Redirect to the admin dashboard page
+        regIsAdminCheckbox.addEventListener('change', () => {
+            if (regIsAdminCheckbox.checked) {
+                regAdminVerificationDiv.style.display = 'block';
             } else {
-                // Show verification error message
-                verificationErrorMessageDiv.textContent = data.error || 'Invalid verification code';
-                verificationErrorMessageDiv.style.display = 'block';
+                regAdminVerificationDiv.style.display = 'none';
+                regVerificationCodeInput.value = '';
+            }
+        });
+
+        registerBtn.addEventListener('click', async () => {
+            const username = regUsernameInput.value.trim();
+            const password = regPasswordInput.value.trim();
+            const isAdmin = regIsAdminCheckbox.checked;
+            let verificationCode = null;
+
+            if (!username || !password) {
+                return alert('Please enter a username and password.');
+            }
+
+            if (isAdmin) {
+                verificationCode = regVerificationCodeInput.value.trim();
+                if (!verificationCode) {
+                    return alert('Please enter the verification code for admin users.');
+                }
+            }
+
+            try {
+                const response = await fetch(`${backendBaseUrl}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, isAdmin, verificationCode })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    alert(data.message || 'Registration successful!');
+                    registerSection.style.display = 'none';
+                    showRegisterBtn.style.display = 'block';
+                    document.getElementById('username').value = username;
+                    document.getElementById('password').value = password;
+                } else {
+                    alert(data.error || 'Registration failed.');
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                alert('An error occurred during registration. Please try again.');
             }
         });
     </script>

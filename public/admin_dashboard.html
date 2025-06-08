@@ -12,7 +12,8 @@
     <div class="action-buttons">
       <button id="logout-btn">Logout</button>
       <button id="add-user-btn">Add New User</button>
-      <button id="go-to-chat-btn">Go to Chat</button> </div>
+      <button id="go-to-chat-btn">Go to Chat</button>
+    </div>
 
     <div id="user-list">
       <h3>Registered Users</h3>
@@ -48,6 +49,9 @@
   </div>
 
   <script>
+    const frontendBaseUrl = 'https://my-app-u73k.onrender.com'; // Your Render frontend URL
+    const backendBaseUrl = 'https://YOUR_BACKEND_URL.onrender.com'; // <<< IMPORTANT: REPLACE THIS PLACEHOLDER
+
     const usersListDiv = document.getElementById('users-list');
     const createUserModal = document.getElementById('create-user-modal');
     const newUsernameInput = document.getElementById('new-username');
@@ -56,16 +60,15 @@
     const adminVerificationDiv = document.getElementById('adminVerificationDiv');
     const verificationCodeInput = document.getElementById('verification-code-input');
 
-    // NEW: Go to Chat button listener
     document.getElementById('go-to-chat-btn').addEventListener('click', () => {
-        window.location.href = '/LoggedIn.html'; // Redirect to your chat page
+        window.location.href = `${frontendBaseUrl}/logged_in.html`;
     });
 
     document.getElementById('logout-btn').addEventListener('click', async () => {
       try {
-        const res = await fetch('/logout', { method: 'POST' });
+        const res = await fetch(`${backendBaseUrl}/logout`, { method: 'POST' });
         if (res.ok) {
-          window.location.href = '/';
+          window.location.href = `${frontendBaseUrl}/`; // Redirect to the main login page
         } else {
           const errorData = await res.json();
           alert(errorData.error || 'Failed to log out.');
@@ -100,7 +103,7 @@
 
     async function fetchUsers() {
       try {
-        const res = await fetch('/admin/users');
+        const res = await fetch(`${backendBaseUrl}/admin/users`);
         if (!res.ok) {
           const errorText = await res.text();
           throw new Error(`HTTP error! status: ${res.status}, message: ${errorText}`);
@@ -140,7 +143,7 @@
       if (!confirm('Are you sure you want to delete this user?')) return;
 
       try {
-        const res = await fetch(`/admin/users/${userId}`, { method: 'DELETE' });
+        const res = await fetch(`${backendBaseUrl}/admin/users/${userId}`, { method: 'DELETE' });
 
         if (res.ok) {
           alert('User deleted!');
@@ -173,7 +176,7 @@
       }
 
       try {
-        const res = await fetch('/admin/users', {
+        const res = await fetch(`${backendBaseUrl}/admin/users`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
