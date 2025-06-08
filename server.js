@@ -1,3 +1,5 @@
+
+
 // const express = require('express');
 // const mongoose = require('mongoose');
 // const bodyParser = require('body-parser');
@@ -12,112 +14,99 @@
 // app.use(bodyParser.json());
 // app.use(express.static('public'));
 
-// mongoose.connect(
-//   'mongodb+srv://georgeortman19:MsgpbIeGYduvbysk@myweb1.iovqynj.mongodb.net/myweb1?retryWrites=true&w=majority'
-// ).then(() => console.log("✅ Connected to MongoDB"))
-//   .catch((err) => console.error("❌ MongoDB connection error:", err));
+// // MongoDB Connection
+// mongoose.connect('mongodb+srv://georgeortman19:MsgpbIeGYduvbysk@myweb1.iovqynj.mongodb.net/myweb1?retryWrites=true&w=majority')
+//   .then(() => console.log("✅ Connected to MongoDB"))
+//   .catch((err) => console.error("❌ MongoDB error:", err));
 
-// app.get('/', (req, res) => {
-//   res.sendFile(__dirname + '/public/index.html');
-// });
+// // Routes
+// app.get('/', (req, res) => res.sendFile(__dirname + '/public/index.html'));
+// app.get('/admin_dashboard', (req, res) => res.sendFile(__dirname + '/public/admin_dashboard.html'));
 
-// app.get('/admin_dashboard', (req, res) => {
-//   res.sendFile(__dirname + '/public/admin_dashboard.html');
-// });
-
-// // Registration
 // app.post('/register', async (req, res) => {
 //   const { username, password } = req.body;
-//   if (!username || !password)
-//     return res.status(400).json({ error: 'Username and password required' });
+//   if (!username || !password) return res.status(400).json({ error: 'Missing fields' });
 
-//   const existing = await User.findOne({ username });
-//   if (existing)
-//     return res.status(400).json({ error: 'Username already exists' });
+//   try {
+//     const existing = await User.findOne({ username });
+//     if (existing) return res.status(400).json({ error: 'Username taken' });
 
-//   const hashed = await bcrypt.hash(password, 10);
-//   const user = new User({ username, password: hashed });
-//   await user.save();
-//   res.status(201).json({ message: 'User registered' });
+//     const hashed = await bcrypt.hash(password, 10);
+//     const user = new User({ username, password: hashed });
+//     await user.save();
+
+//     res.status(201).json({ message: 'Registered successfully' });
+//   } catch (err) {
+//     res.status(500).json({ error: 'Registration failed' });
+//   }
 // });
 
-// // Login
 // app.post('/login', async (req, res) => {
 //   const { username, password } = req.body;
 //   const user = await User.findOne({ username });
 //   if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
-//   const valid = await bcrypt.compare(password, user.password);
-//   if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+//   const match = await bcrypt.compare(password, user.password);
+//   if (!match) return res.status(401).json({ error: 'Invalid credentials' });
 
 //   if (user.isAdmin) {
-//     return res.status(200).json({ isAdmin: true, message: 'Admin verification required' });
+//     return res.status(200).json({ isAdmin: true, message: 'Admin login - verification required' });
 //   } else {
 //     return res.status(200).json({ isAdmin: false, message: 'Login successful' });
 //   }
 // });
 
-// // Admin verification
 // app.post('/verify-admin', async (req, res) => {
 //   const { username, verificationCode } = req.body;
 //   const user = await User.findOne({ username });
 
-//   if (!user || !user.isAdmin)
-//     return res.status(404).json({ error: 'User not found or not admin' });
-
+//   if (!user || !user.isAdmin) return res.status(404).json({ error: 'Admin not found' });
 //   if (user.verificationCode === verificationCode) {
-//     return res.status(200).json({ message: 'Admin verified' });
+//     res.status(200).json({ message: 'Verified' });
 //   } else {
-//     return res.status(401).json({ error: 'Invalid verification code' });
+//     res.status(401).json({ error: 'Invalid code' });
 //   }
 // });
 
-// // Admin: List users
 // app.get('/admin/users', async (req, res) => {
 //   const users = await User.find({}, { password: 0 });
 //   res.json(users);
 // });
 
-// // Admin: Get single user
 // app.get('/admin/users/:username', async (req, res) => {
 //   const user = await User.findOne({ username: req.params.username }, { password: 0 });
 //   if (!user) return res.status(404).json({ error: 'User not found' });
 //   res.json(user);
 // });
 
-// // Admin: Create user
 // app.post('/admin/users', async (req, res) => {
 //   const { username, password, isAdmin, verificationCode } = req.body;
 
-//   if (!username || !password)
-//     return res.status(400).json({ error: 'Username and password required' });
+//   if (!username || !password) return res.status(400).json({ error: 'Missing fields' });
+//   if (isAdmin && !verificationCode) return res.status(400).json({ error: 'Admin code required' });
 
 //   const existing = await User.findOne({ username });
-//   if (existing)
-//     return res.status(400).json({ error: 'User already exists' });
-
-//   if (isAdmin && !verificationCode)
-//     return res.status(400).json({ error: 'Admin needs verification code' });
+//   if (existing) return res.status(400).json({ error: 'Username taken' });
 
 //   const hashed = await bcrypt.hash(password, 10);
-//   const user = new User({ username, password: hashed, isAdmin, verificationCode });
-//   await user.save();
+//   const newUser = new User({
+//     username,
+//     password: hashed,
+//     isAdmin: !!isAdmin,
+//     verificationCode: isAdmin ? verificationCode : null
+//   });
+
+//   await newUser.save();
 //   res.status(201).json({ success: true, message: 'User created' });
 // });
 
-// // Admin: Delete user
 // app.delete('/admin/users/:id', async (req, res) => {
-//   try {
-//     await User.findByIdAndDelete(req.params.id);
-//     res.json({ success: true, message: 'User deleted' });
-//   } catch (err) {
-//     res.status(500).json({ error: 'User deletion failed' });
-//   }
+//   const result = await User.findByIdAndDelete(req.params.id);
+//   if (!result) return res.status(404).json({ error: 'User not found' });
+//   res.json({ success: true, message: 'User deleted' });
 // });
 
-// app.listen(PORT, () => {
-//   console.log(`🚀 Server running at http://localhost:${PORT}`);
-// });
+// app.listen(PORT, () => console.log(`🚀 Server running: http://localhost:${PORT}`));
 
 
 const express = require('express');
@@ -126,6 +115,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const User = require('./models/User');
+const socketIo = require('socket.io');
 
 const app = express();
 const PORT = 3000;
@@ -143,6 +133,10 @@ mongoose.connect('mongodb+srv://georgeortman19:MsgpbIeGYduvbysk@myweb1.iovqynj.m
 app.get('/', (req, res) => res.sendFile(__dirname + '/public/index.html'));
 app.get('/admin_dashboard', (req, res) => res.sendFile(__dirname + '/public/admin_dashboard.html'));
 
+// Chat route (for logged-in users)
+app.get('/chat', (req, res) => res.sendFile(__dirname + '/public/LoggedIn.html'));
+
+// Register route
 app.post('/register', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Missing fields' });
@@ -161,6 +155,7 @@ app.post('/register', async (req, res) => {
   }
 });
 
+// Login route
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   const user = await User.findOne({ username });
@@ -169,13 +164,11 @@ app.post('/login', async (req, res) => {
   const match = await bcrypt.compare(password, user.password);
   if (!match) return res.status(401).json({ error: 'Invalid credentials' });
 
-  if (user.isAdmin) {
-    return res.status(200).json({ isAdmin: true, message: 'Admin login - verification required' });
-  } else {
-    return res.status(200).json({ isAdmin: false, message: 'Login successful' });
-  }
+  // Login successful, send response
+  res.status(200).json({ username: user.username, isAdmin: user.isAdmin, message: 'Login successful' });
 });
 
+// Admin verification route
 app.post('/verify-admin', async (req, res) => {
   const { username, verificationCode } = req.body;
   const user = await User.findOne({ username });
@@ -188,20 +181,14 @@ app.post('/verify-admin', async (req, res) => {
   }
 });
 
+// Admin user management routes
 app.get('/admin/users', async (req, res) => {
   const users = await User.find({}, { password: 0 });
   res.json(users);
 });
 
-app.get('/admin/users/:username', async (req, res) => {
-  const user = await User.findOne({ username: req.params.username }, { password: 0 });
-  if (!user) return res.status(404).json({ error: 'User not found' });
-  res.json(user);
-});
-
 app.post('/admin/users', async (req, res) => {
   const { username, password, isAdmin, verificationCode } = req.body;
-
   if (!username || !password) return res.status(400).json({ error: 'Missing fields' });
   if (isAdmin && !verificationCode) return res.status(400).json({ error: 'Admin code required' });
 
@@ -226,4 +213,26 @@ app.delete('/admin/users/:id', async (req, res) => {
   res.json({ success: true, message: 'User deleted' });
 });
 
-app.listen(PORT, () => console.log(`🚀 Server running: http://localhost:${PORT}`));
+// Starting the server
+const server = app.listen(PORT, () => console.log(`🚀 Server running: http://localhost:${PORT}`));
+
+// Set up socket.io for real-time chat
+const io = socketIo(server);
+
+io.on('connection', (socket) => {
+  console.log('A user connected');
+
+  // Notify when a user is typing
+  socket.on('typing', (username) => {
+    socket.broadcast.emit('typing', username); // Notify other users
+  });
+
+  // Listen for chat messages
+  socket.on('chatMessage', (msg) => {
+    io.emit('chatMessage', msg); // Broadcast the message to all users
+  });
+
+  socket.on('disconnect', () => {
+    console.log('A user disconnected');
+  });
+});

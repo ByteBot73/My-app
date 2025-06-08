@@ -3,14 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Success</title>
+    <title>Logged In</title>
+    <script src="/socket.io/socket.io.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Welcome!</h1>
-        <p>You have successfully logged in!</p>
-        <a href="index.html">Go to Login</a>
+    <div id="chat-container">
+        <h1>Welcome to the Chat Room!</h1>
+        <div id="chat-box">
+            <div id="messages"></div>
+            <div id="typing-notification"></div>
+        </div>
+        <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
+        <button id="send-button">Send</button>
     </div>
+
+    <script>
+        const socket = io();
+        const chatInput = document.getElementById('chat-input');
+        const sendButton = document.getElementById('send-button');
+        const messagesDiv = document.getElementById('messages');
+        const typingNotification = document.getElementById('typing-notification');
+
+        // Get the username from the logged-in user (you should set this during login)
+        const username = 'YourUsername'; // Replace with actual username from the login
+
+        // Send chat message
+        sendButton.addEventListener('click', () => {
+            const message = chatInput.value;
+            if (message) {
+                socket.emit('chatMessage', { username, message });
+                chatInput.value = ''; // Clear input after sending
+            }
+        });
+
+        // Emit typing notification
+        chatInput.addEventListener('input', () => {
+            socket.emit('typing', username);
+        });
+
+        // Listen for chat messages
+        socket.on('chatMessage', (msg) => {
+            const messageElement = document.createElement('div');
+            messageElement.textContent = `${msg.username}: ${msg.message}`;
+            messagesDiv.appendChild(messageElement);
+        });
+
+        // Listen for typing notifications
+        socket.on('typing', (username) => {
+            typingNotification.textContent = `${username} is typing...`;
+            setTimeout(() => {
+                typingNotification.textContent = ''; // Clear typing notification after 1 second
+            }, 1000);
+        });
+    </script>
 </body>
 </html>
